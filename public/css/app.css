@@ -1,0 +1,240 @@
+:root {
+    --brand:   #1e3a5f;
+    --accent:  #2563eb;
+    --surface: #f8f9fa;
+}
+
+/* ── Base ────────────────────────────────── */
+body {
+    background-color: var(--surface);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.95rem;
+}
+
+/* ── Navbar ──────────────────────────────── */
+.navbar {
+    background-color: var(--brand) !important;
+}
+.navbar-brand {
+    color: #fff !important;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+/* ── Stat Cards ──────────────────────────── */
+.stat-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.1rem 1.4rem;
+}
+.stat-card .label {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #6c757d;
+}
+.stat-card .value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--brand);
+}
+.stat-card .value.clr-blue   { color: var(--accent); }
+.stat-card .value.clr-orange { color: #d97706; }
+.stat-card .value.clr-green  { color: #16a34a; }
+
+/* ── Table Card ──────────────────────────── */
+.card-table {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.card-table .table {
+    margin-bottom: 0;
+}
+.card-table thead th {
+    background-color: var(--brand);
+    color: #fff;
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    border-bottom: none;
+    white-space: nowrap;
+}
+.table tbody tr:hover {
+    background-color: #f0f4ff;
+}
+
+/* ── Status Badges ───────────────────────── */
+.badge-muat { background-color: var(--accent); color: #fff; }
+.badge-otw  { background-color: #d97706;       color: #fff; }
+.badge-bpi  { background-color: #16a34a;        color: #fff; }
+
+/* ── Buttons ─────────────────────────────── */
+.btn-brand {
+    background-color: var(--accent);
+    color: #fff;
+    border: none;
+}
+.btn-brand:hover {
+    background-color: #1d4ed8;
+    color: #fff;
+}
+
+.btn-edit {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    font-size: .82rem;
+    padding: 2px 10px;
+}
+.btn-edit:hover {
+    background-color: var(--accent);
+    color: #fff;
+}
+
+.btn-del {
+    border: 1px solid #dc2626;
+    color: #dc2626;
+    background: transparent;
+    font-size: .82rem;
+    padding: 2px 10px;
+}
+.btn-del:hover {
+    background-color: #dc2626;
+    color: #fff;
+}
+
+/* ── Form Card ───────────────────────────── */
+.form-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+.form-label {
+    font-weight: 500;
+    font-size: .9rem;
+}
+
+/* ── Section Title ───────────────────────── */
+.section-title {
+    color: var(--brand);
+    font-weight: 700;
+    font-size: 1.15rem;
+    border-left: 4px solid var(--accent);
+    padding-left: .6rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Toolbar ─────────────────────────────── */
+.toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+/* ── Inline edit controls ────────────────── */
+.inline-num {
+    width: 68px;
+    padding: 2px 6px;
+    text-align: center;
+    display: inline-block;
+    border-color: #dee2e6;
+}
+.inline-num:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(37,99,235,.15);
+}
+
+.inline-sel {
+    padding: 2px 6px;
+    font-size: .82rem;
+    border-color: #dee2e6;
+}
+.inline-sel:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(37,99,235,.15);
+}
+
+/* Tombol centang simpan inline */
+.btn-save-inline {
+    background-color: #16a34a;
+    color: #fff;
+    border: none;
+    font-size: .9rem;
+    padding: 2px 10px;
+    border-radius: 4px;
+}
+.btn-save-inline:hover {
+    background-color: #15803d;
+    color: #fff;
+}
+.wa-link {
+    color: #16a34a;
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 500;
+}
+.wa-link:hover {
+    text-decoration: underline;
+    color: #15803d;
+}
+
+/* ── Mobile truck card ───────────────────── */
+.truck-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.truck-card-header {
+    background-color: var(--brand);
+    color: #fff;
+    padding: .6rem 1rem;
+}
+.truck-plate {
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: .5px;
+}
+.truck-pt {
+    font-size: .78rem;
+    opacity: .85;
+    background: rgba(255,255,255,.15);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.truck-card-body {
+    padding: .75rem 1rem;
+    display: flex;
+    gap: 1.2rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.truck-card-edit {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fafafa;
+}
+
+.truck-card-footer {
+    padding: .6rem 1rem;
+}
+
+/* ── WhatsApp link ───────────────────────── */
+.wa-link {
+    color: #16a34a;
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 500;
+}
+.wa-link:hover {
+    text-decoration: underline;
+    color: #15803d;
+}
