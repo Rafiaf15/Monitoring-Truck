@@ -11,7 +11,7 @@
 
 <nav class="navbar px-3 mb-4">
     <a class="navbar-brand" href="{{ route('trucks.index') }}">
-        🚛 Monitoring Truk 
+        🚛 Monitoring Truk <span style="font-size: 0.75rem;" class="text-muted">by bantara</span>
     </a>
 </nav>
 

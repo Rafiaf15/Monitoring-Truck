@@ -12,6 +12,7 @@ class Load extends Model
     protected $fillable = [
         'truck_id',
         'pipe_count',
+        'trip_count',
         'status',
     ];
 
@@ -20,4 +21,3 @@ class Load extends Model
         return $this->belongsTo(Truck::class);
     }
 }
-?>

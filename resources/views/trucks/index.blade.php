@@ -6,8 +6,8 @@
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <div class="stat-card">
-            <div class="label">Total Truk</div>
-            <div class="value">{{ $total }}</div>
+            <div class="label">Total Truk / Total Rit</div>
+            <div class="value">{{ $total }} <span style="font-size:1.1rem;color:#6c757d">/ {{ $totalTrips }} Rit</span></div>
         </div>
     </div>
     <div class="col-6 col-md-3">
@@ -36,10 +36,10 @@
         <input type="text" name="search" class="form-control form-control-sm"
                placeholder="Cari nopol / supir…"
                value="{{ request('search') }}"
-               style="max-width:200px; min-width:120px; flex:1">
+               style="max-width:180px; min-width:110px; flex:1">
 
         <select name="company_id" class="form-select form-select-sm"
-                style="max-width:160px; min-width:110px; flex:1"
+                style="max-width:140px; min-width:100px; flex:1"
                 onchange="this.form.submit()">
             <option value="">Semua PT</option>
             @foreach($companies as $c)
@@ -54,28 +54,33 @@
             @if(request('search') || request('company_id'))
                 <a href="{{ route('trucks.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
             @endif
+            <a href="{{ route('trucks.logs') }}" class="btn btn-outline-dark btn-sm">📜 Log Aktivitas</a>
             <a href="{{ route('trucks.create') }}" class="btn btn-brand btn-sm">+ Tambah</a>
         </div>
     </form>
 </div>
 
 {{-- ════════════════════════════════════════════════════════
-     MOBILE VIEW  — kartu per truk (tampil di < md)
+     MOBILE VIEW  — kartu per truk
      ════════════════════════════════════════════════════════ --}}
 <div class="d-md-none">
     @forelse($trucks as $i => $truck)
     @php
-        $status = $truck->currentLoad->status    ?? 'muat';
+        $status = $truck->currentLoad->status     ?? 'muat';
         $pipe   = $truck->currentLoad->pipe_count ?? 0;
+        $trip   = $truck->currentLoad->trip_count ?? 0;
         $wa     = 'https://wa.me/' . $truck->driver->whatsapp_number;
         $badgeClass = ['muat' => 'badge-muat', 'otw' => 'badge-otw', 'bpi' => 'badge-bpi'][$status];
         $badgeLabel = ['muat' => 'Muat', 'otw' => 'OTW Pelabuhan', 'bpi' => 'BPI'][$status];
     @endphp
     <div class="truck-card mb-3">
 
-        {{-- Header: nopol + PT --}}
+        {{-- Header: nopol + PT + badge rit otomatis --}}
         <div class="truck-card-header d-flex justify-content-between align-items-center">
-            <span class="truck-plate">{{ $truck->plate_number }}</span>
+            <div>
+                <span class="truck-plate">{{ $truck->plate_number }}</span>
+                <span class="badge bg-warning text-dark ms-1" style="font-size:0.75rem">🔥 {{ $trip }} Rit</span>
+            </div>
             <span class="truck-pt">{{ $truck->company->name }}</span>
         </div>
 
@@ -93,12 +98,12 @@
             </div>
         </div>
 
-        {{-- Inline edit: pipe + status + simpan --}}
+        {{-- Inline edit: Pipa + Status (Ritase otomatis bertambah) --}}
         <form method="POST" action="{{ route('trucks.updateLoad', $truck) }}" class="truck-card-edit">
             @csrf
             <div class="d-flex gap-2 align-items-center flex-wrap">
                 <div class="d-flex align-items-center gap-1">
-                    <label class="text-muted mb-0" style="font-size:.78rem;white-space:nowrap">PIPE</label>
+                    <label class="text-muted mb-0" style="font-size:.78rem">PIPA</label>
                     <input type="number" name="pipe_count" value="{{ $pipe }}" min="0"
                            class="form-control form-control-sm text-center"
                            style="width:70px" required>
@@ -107,15 +112,18 @@
                     <select name="status" class="form-select form-select-sm" required>
                         <option value="muat" {{ $status === 'muat' ? 'selected' : '' }}>Muat</option>
                         <option value="otw"  {{ $status === 'otw'  ? 'selected' : '' }}>OTW Pelabuhan</option>
-                        <option value="bpi"  {{ $status === 'bpi'  ? 'selected' : '' }}>BPI</option>
+                        <option value="bpi"  {{ $status === 'bpi'  ? 'selected' : '' }}>BPI (Selesai)</option>
                     </select>
                 </div>
                 <button type="submit" class="btn btn-save-inline btn-sm px-3">✓ Simpan</button>
             </div>
         </form>
 
-        {{-- Aksi: Edit + Hapus --}}
+        {{-- Aksi --}}
         <div class="truck-card-footer d-flex gap-2">
+            <a href="{{ route('trucks.logs', ['truck_id' => $truck->id]) }}" class="btn btn-outline-secondary btn-sm flex-fill text-center">
+                Lihat Log
+            </a>
             <a href="{{ route('trucks.edit', $truck) }}" class="btn btn-edit btn-sm flex-fill text-center">
                 Edit Lengkap
             </a>
@@ -133,7 +141,7 @@
 </div>
 
 {{-- ════════════════════════════════════════════════════════
-     DESKTOP VIEW  — tabel (tampil di ≥ md)
+     DESKTOP VIEW  — tabel
      ════════════════════════════════════════════════════════ --}}
 <div class="d-none d-md-block">
     <div class="card-table mb-3">
@@ -146,17 +154,19 @@
                         <th>Supir</th>
                         <th>No. HP</th>
                         <th>PT</th>
-                        <th class="text-center" style="width:90px">Pipe</th>
+                        <th class="text-center" style="width:75px">Rit</th>
+                        <th class="text-center" style="width:85px">Pipe</th>
                         <th class="text-center" style="width:150px">Status</th>
                         <th class="text-center" style="width:60px">Simpan</th>
-                        <th class="text-center pe-3" style="width:110px">Aksi</th>
+                        <th class="text-center pe-3" style="width:140px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($trucks as $i => $truck)
                     @php
-                        $status = $truck->currentLoad->status    ?? 'muat';
+                        $status = $truck->currentLoad->status     ?? 'muat';
                         $pipe   = $truck->currentLoad->pipe_count ?? 0;
+                        $trip   = $truck->currentLoad->trip_count ?? 0;
                         $wa     = 'https://wa.me/' . $truck->driver->whatsapp_number;
                     @endphp
                     <tr>
@@ -169,27 +179,37 @@
                             </a>
                         </td>
                         <td class="text-muted" style="font-size:.88rem">{{ $truck->company->name }}</td>
+                        
+                        {{-- Ritase Otomatis (Tampilan Badge) --}}
+                        <td class="text-center">
+                            <span class="badge bg-warning text-dark fw-bold" style="font-size:0.85rem">{{ $trip }}</span>
+                        </td>
 
                         <form method="POST" action="{{ route('trucks.updateLoad', $truck) }}" style="display:contents">
                             @csrf
+                            {{-- Pipe --}}
                             <td class="text-center">
                                 <input type="number" name="pipe_count" value="{{ $pipe }}" min="0"
-                                       class="form-control form-control-sm text-center inline-num" required>
+                                       class="form-control form-control-sm text-center inline-num"
+                                       style="width:70px" required>
                             </td>
+                            {{-- Status --}}
                             <td class="text-center">
                                 <select name="status" class="form-select form-select-sm inline-sel" required>
                                     <option value="muat" {{ $status === 'muat' ? 'selected' : '' }}>Muat</option>
                                     <option value="otw"  {{ $status === 'otw'  ? 'selected' : '' }}>OTW Pelabuhan</option>
-                                    <option value="bpi"  {{ $status === 'bpi'  ? 'selected' : '' }}>BPI</option>
+                                    <option value="bpi"  {{ $status === 'bpi'  ? 'selected' : '' }}>BPI (Selesai)</option>
                                 </select>
                             </td>
+                            {{-- Tombol Simpan --}}
                             <td class="text-center">
                                 <button type="submit" class="btn btn-save-inline btn-sm" title="Simpan">✓</button>
                             </td>
                         </form>
 
                         <td class="text-center pe-3">
-                            <a href="{{ route('trucks.edit', $truck) }}" class="btn btn-edit btn-sm">Edit</a>
+                            <a href="{{ route('trucks.logs', ['truck_id' => $truck->id]) }}" class="btn btn-sm btn-outline-secondary me-1" title="Lihat History">Log</a>
+                            <a href="{{ route('trucks.edit', $truck) }}" class="btn btn-edit btn-sm me-1">Edit</a>
                             <form method="POST" action="{{ route('trucks.destroy', $truck) }}" style="display:inline"
                                   onsubmit="return confirm('Hapus truk {{ $truck->plate_number }}?')">
                                 @csrf @method('DELETE')
@@ -199,7 +219,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Tidak ada data truk.</td>
+                        <td colspan="10" class="text-center text-muted py-4">Tidak ada data truk.</td>
                     </tr>
                     @endforelse
                 </tbody>

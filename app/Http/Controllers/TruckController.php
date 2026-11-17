@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Load;
+use App\Models\LoadLog;
 use App\Models\Truck;
 use App\Models\Driver;
 use Illuminate\Http\RedirectResponse;
@@ -37,8 +38,9 @@ class TruckController extends Controller
 
         $total        = Truck::count();
         $statusCounts = $this->buildStatusCounts();
+        $totalTrips   = (int) Load::sum('trip_count');
 
-        return view('trucks.index', compact('trucks', 'companies', 'total', 'statusCounts'));
+        return view('trucks.index', compact('trucks', 'companies', 'total', 'statusCounts', 'totalTrips'));
     }
 
     public function create(): View
@@ -65,10 +67,21 @@ class TruckController extends Controller
             'company_id'   => $validated['company_id'],
         ]);
 
+        $tripCount = $validated['status'] === 'bpi' ? 1 : 0;
+
         Load::create([
             'truck_id'   => $truck->id,
             'pipe_count' => $validated['pipe_count'],
+            'trip_count' => $tripCount,
             'status'     => $validated['status'],
+        ]);
+
+        LoadLog::create([
+            'truck_id'   => $truck->id,
+            'pipe_count' => $validated['pipe_count'],
+            'trip_count' => $tripCount,
+            'status'     => $validated['status'],
+            'note'       => 'Registrasi mobil baru',
         ]);
 
         return redirect()->route('trucks.index')
@@ -84,6 +97,7 @@ class TruckController extends Controller
         return view('trucks.edit', compact('truck', 'companies', 'drivers', 'statuses'));
     }
 
+    // Koreksi data lengkap & perbaikan jika ada salah ritase
     public function update(Request $request, Truck $truck): RedirectResponse
     {
         $validated = $request->validate([
@@ -91,8 +105,12 @@ class TruckController extends Controller
             'driver_id'    => 'required|exists:drivers,id',
             'company_id'   => 'required|exists:companies,id',
             'pipe_count'   => 'required|integer|min:0',
+            'trip_count'   => 'required|integer|min:0',
             'status'       => 'required|in:muat,otw,bpi',
         ]);
+
+        $oldTrip = $truck->currentLoad ? (int) $truck->currentLoad->trip_count : 0;
+        $newTrip = (int) $validated['trip_count'];
 
         $truck->update([
             'plate_number' => $validated['plate_number'],
@@ -102,14 +120,31 @@ class TruckController extends Controller
 
         $truck->currentLoad()->updateOrCreate(
             ['truck_id' => $truck->id],
-            ['pipe_count' => $validated['pipe_count'], 'status' => $validated['status']]
+            [
+                'pipe_count' => $validated['pipe_count'],
+                'trip_count' => $newTrip,
+                'status'     => $validated['status']
+            ]
         );
 
+        $note = 'Edit data mobil';
+        if ($oldTrip !== $newTrip) {
+            $note = "Koreksi Manual Ritase: {$oldTrip} → {$newTrip}";
+        }
+
+        LoadLog::create([
+            'truck_id'   => $truck->id,
+            'pipe_count' => $validated['pipe_count'],
+            'trip_count' => $newTrip,
+            'status'     => $validated['status'],
+            'note'       => $note,
+        ]);
+
         return redirect()->route('trucks.index')
-            ->with('success', 'Data truk berhasil diperbarui.');
+            ->with('success', "Data {$truck->plate_number} berhasil diperbarui.");
     }
 
-    // Inline update – hanya pipe_count & status (dari modal di dashboard)
+    // Inline update – Pipa & Status
     public function updateLoad(Request $request, Truck $truck): RedirectResponse
     {
         $validated = $request->validate([
@@ -117,13 +152,74 @@ class TruckController extends Controller
             'status'     => 'required|in:muat,otw,bpi',
         ]);
 
+        $oldLoad = $truck->currentLoad;
+        $currentTrip = $oldLoad ? (int) $oldLoad->trip_count : 0;
+        $notes = [];
+
+        // Logika Otomatis: Jika status berubah menjadi BPI (selesai bongkar/sampai), ritase otomatis +1
+        $ritTambah = false;
+        if ($oldLoad && $oldLoad->status !== 'bpi' && $validated['status'] === 'bpi') {
+            $currentTrip++;
+            $ritTambah = true;
+            $notes[] = "Selesai bongkar (BPI): Ritase otomatis naik jadi {$currentTrip}";
+        }
+
+        if ($oldLoad) {
+            if ($oldLoad->status !== $validated['status']) {
+                $notes[] = "Status: {$oldLoad->status} → {$validated['status']}";
+            }
+            if ($oldLoad->pipe_count != $validated['pipe_count']) {
+                $notes[] = "Pipa: {$oldLoad->pipe_count} → {$validated['pipe_count']}";
+            }
+        }
+
+        $note = !empty($notes) ? implode(' | ', $notes) : 'Update status & pipa';
+
         $truck->currentLoad()->updateOrCreate(
             ['truck_id' => $truck->id],
-            $validated
+            [
+                'pipe_count' => $validated['pipe_count'],
+                'trip_count' => $currentTrip,
+                'status'     => $validated['status'],
+            ]
         );
 
-        return redirect()->route('trucks.index')
-            ->with('success', "Status {$truck->plate_number} diperbarui.");
+        LoadLog::create([
+            'truck_id'   => $truck->id,
+            'pipe_count' => $validated['pipe_count'],
+            'trip_count' => $currentTrip,
+            'status'     => $validated['status'],
+            'note'       => $note,
+        ]);
+
+        $msg = "Status {$truck->plate_number} berhasil diperbarui.";
+        if ($ritTambah) {
+            $msg .= " (Ritase naik jadi {$currentTrip})";
+        }
+
+        return redirect()->route('trucks.index')->with('success', $msg);
+    }
+
+    // Halaman History Log Aktivitas
+    public function logs(Request $request): View
+    {
+        $query = LoadLog::with(['truck.driver', 'truck.company'])->latest();
+
+        if ($request->filled('truck_id')) {
+            $query->where('truck_id', $request->input('truck_id'));
+        }
+
+        $logs = $query->paginate(25);
+        $trucks = Truck::orderBy('plate_number')->get();
+
+        return view('trucks.logs', compact('logs', 'trucks'));
+    }
+
+    // Hapus satu baris log tertentu jika salah
+    public function destroyLog(LoadLog $log): RedirectResponse
+    {
+        $log->delete();
+        return redirect()->back()->with('success', 'Catatan log berhasil dihapus.');
     }
 
     public function destroy(Truck $truck): RedirectResponse

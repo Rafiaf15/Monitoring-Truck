@@ -29,5 +29,10 @@ class Truck extends Model
     {
         return $this->hasOne(Load::class);
     }
+
+    public function logs()
+    {
+        return $this->hasMany(LoadLog::class)->latest();
+    }
 }
 ?>
