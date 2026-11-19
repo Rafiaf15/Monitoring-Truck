@@ -9,6 +9,7 @@ use App\Models\Load;
 use App\Models\LoadLog;
 use App\Models\Truck;
 use App\Models\Driver;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,6 +18,9 @@ class TruckController extends Controller
 {
     public function index(Request $request): View
     {
+        // Filter Tanggal Laporan (Default Hari Ini)
+        $selectedDate = $request->input('date', Carbon::today()->toDateString());
+
         $query = Truck::with(['driver', 'company', 'currentLoad']);
 
         // Search: plate number atau nama supir
@@ -33,14 +37,28 @@ class TruckController extends Controller
             $query->where('company_id', $request->input('company_id'));
         }
 
-        $trucks    = $query->orderBy('company_id')->get();
+        // Urutkan yang baru saja diperbarui agar otomatis ke atas (order by load updated_at desc)
+        $trucks = $query->leftJoin('loads', 'trucks.id', '=', 'loads.truck_id')
+            ->select('trucks.*')
+            ->orderByDesc('loads.updated_at')
+            ->orderBy('trucks.plate_number')
+            ->get();
+
         $companies = Company::orderBy('name')->get();
 
         $total        = Truck::count();
-        $statusCounts = $this->buildStatusCounts();
-        $totalTrips   = (int) Load::sum('trip_count');
+        $statusCounts = $this->buildStatusCounts($selectedDate);
+        
+        $totalTrips = (int) Load::sum('trip_count');
 
-        return view('trucks.index', compact('trucks', 'companies', 'total', 'statusCounts', 'totalTrips'));
+        return view('trucks.index', compact(
+            'trucks',
+            'companies',
+            'total',
+            'statusCounts',
+            'totalTrips',
+            'selectedDate'
+        ));
     }
 
     public function create(): View
@@ -58,7 +76,7 @@ class TruckController extends Controller
             'driver_id'    => 'required|exists:drivers,id',
             'company_id'   => 'required|exists:companies,id',
             'pipe_count'   => 'required|integer|min:0',
-            'status'       => 'required|in:muat,otw,bpi',
+            'status'       => 'required|in:bpi,muat,otw,otw_bpi',
         ]);
 
         $truck = Truck::create([
@@ -67,7 +85,7 @@ class TruckController extends Controller
             'company_id'   => $validated['company_id'],
         ]);
 
-        $tripCount = $validated['status'] === 'bpi' ? 1 : 0;
+        $tripCount = $validated['status'] === 'otw_bpi' ? 1 : 0;
 
         Load::create([
             'truck_id'   => $truck->id,
@@ -92,7 +110,7 @@ class TruckController extends Controller
     {
         $companies = Company::orderBy('name')->get();
         $drivers   = Driver::orderBy('name')->get();
-        $statuses  = ['muat', 'otw', 'bpi'];
+        $statuses  = ['bpi', 'muat', 'otw', 'otw_bpi'];
 
         return view('trucks.edit', compact('truck', 'companies', 'drivers', 'statuses'));
     }
@@ -106,7 +124,7 @@ class TruckController extends Controller
             'company_id'   => 'required|exists:companies,id',
             'pipe_count'   => 'required|integer|min:0',
             'trip_count'   => 'required|integer|min:0',
-            'status'       => 'required|in:muat,otw,bpi',
+            'status'       => 'required|in:bpi,muat,otw,otw_bpi',
         ]);
 
         $oldTrip = $truck->currentLoad ? (int) $truck->currentLoad->trip_count : 0;
@@ -123,7 +141,8 @@ class TruckController extends Controller
             [
                 'pipe_count' => $validated['pipe_count'],
                 'trip_count' => $newTrip,
-                'status'     => $validated['status']
+                'status'     => $validated['status'],
+                'updated_at' => now(),
             ]
         );
 
@@ -144,29 +163,38 @@ class TruckController extends Controller
             ->with('success', "Data {$truck->plate_number} berhasil diperbarui.");
     }
 
-    // Inline update – Pipa & Status
+    // Inline update – Pipa & Status (Alur: BPI -> Muat -> OTW Pelabuhan -> OTW BPI)
     public function updateLoad(Request $request, Truck $truck): RedirectResponse
     {
         $validated = $request->validate([
             'pipe_count' => 'required|integer|min:0',
-            'status'     => 'required|in:muat,otw,bpi',
+            'status'     => 'required|in:bpi,muat,otw,otw_bpi',
         ]);
 
         $oldLoad = $truck->currentLoad;
         $currentTrip = $oldLoad ? (int) $oldLoad->trip_count : 0;
         $notes = [];
 
-        // Logika Otomatis: Jika status berubah menjadi BPI (selesai bongkar/sampai), ritase otomatis +1
+        // Logika Otomatis Sesuai Alur:
+        // Saat mobil berangkat membawa muatan menuju BPI (status berubah jadi 'otw_bpi'), ritase otomatis naik +1
         $ritTambah = false;
-        if ($oldLoad && $oldLoad->status !== 'bpi' && $validated['status'] === 'bpi') {
+        if ($oldLoad && $oldLoad->status !== 'otw_bpi' && $validated['status'] === 'otw_bpi') {
             $currentTrip++;
             $ritTambah = true;
-            $notes[] = "Selesai bongkar (BPI): Ritase otomatis naik jadi {$currentTrip}";
+            $notes[] = "Berangkat OTW BPI: Ritase otomatis bertambah jadi {$currentTrip}";
         }
 
         if ($oldLoad) {
             if ($oldLoad->status !== $validated['status']) {
-                $notes[] = "Status: {$oldLoad->status} → {$validated['status']}";
+                $statusLabels = [
+                    'bpi'     => 'BPI',
+                    'muat'    => 'Proses Muat',
+                    'otw'     => 'OTW Pelabuhan',
+                    'otw_bpi' => 'OTW BPI',
+                ];
+                $oldTxt = $statusLabels[$oldLoad->status] ?? $oldLoad->status;
+                $newTxt = $statusLabels[$validated['status']] ?? $validated['status'];
+                $notes[] = "Status: {$oldTxt} → {$newTxt}";
             }
             if ($oldLoad->pipe_count != $validated['pipe_count']) {
                 $notes[] = "Pipa: {$oldLoad->pipe_count} → {$validated['pipe_count']}";
@@ -181,6 +209,7 @@ class TruckController extends Controller
                 'pipe_count' => $validated['pipe_count'],
                 'trip_count' => $currentTrip,
                 'status'     => $validated['status'],
+                'updated_at' => now(), // Memastikan updated_at berubah agar langsung naik ke urutan paling atas
             ]
         );
 
@@ -194,10 +223,72 @@ class TruckController extends Controller
 
         $msg = "Status {$truck->plate_number} berhasil diperbarui.";
         if ($ritTambah) {
-            $msg .= " (Ritase naik jadi {$currentTrip})";
+            $msg .= " (Ritase otomatis naik jadi {$currentTrip} Rit)";
         }
 
-        return redirect()->route('trucks.index')->with('success', $msg);
+        return redirect()->route('trucks.index', [
+            'search'     => $request->input('search'),
+            'company_id' => $request->input('company_id'),
+            'date'       => $request->input('date', now()->toDateString())
+        ])->with('success', $msg);
+    }
+
+    // Tombol Cepat: Tambah 1 Rit Langsung
+    public function incrementTrip(Request $request, Truck $truck): RedirectResponse
+    {
+        $currentLoad = $truck->currentLoad;
+        $newTrip = $currentLoad ? ((int) $currentLoad->trip_count + 1) : 1;
+
+        $truck->currentLoad()->updateOrCreate(
+            ['truck_id' => $truck->id],
+            [
+                'trip_count' => $newTrip,
+                'updated_at' => now(),
+            ]
+        );
+
+        LoadLog::create([
+            'truck_id'   => $truck->id,
+            'pipe_count' => $currentLoad->pipe_count ?? 0,
+            'trip_count' => $newTrip,
+            'status'     => $currentLoad->status ?? 'bpi',
+            'note'       => "Tambah cepat ritase: {$newTrip} Rit",
+        ]);
+
+        return redirect()->back()->with('success', "Ritase {$truck->plate_number} bertambah jadi {$newTrip} Rit.");
+    }
+
+    // Fitur Cetak / Print Laporan
+    public function print(Request $request): View
+    {
+        $selectedDate = $request->input('date', Carbon::today()->toDateString());
+        $companyId    = $request->input('company_id');
+
+        $query = Truck::with(['driver', 'company', 'currentLoad']);
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $trucks = $query->leftJoin('loads', 'trucks.id', '=', 'loads.truck_id')
+            ->select('trucks.*')
+            ->orderBy('trucks.company_id')
+            ->orderBy('trucks.plate_number')
+            ->get();
+
+        $companyName  = $companyId ? Company::find($companyId)?->name : 'Semua PT';
+        $statusCounts = $this->buildStatusCounts($selectedDate);
+        $totalPipes   = (int) Load::sum('pipe_count');
+        $totalTrips   = (int) Load::sum('trip_count');
+
+        return view('trucks.print', compact(
+            'trucks',
+            'selectedDate',
+            'companyName',
+            'statusCounts',
+            'totalPipes',
+            'totalTrips'
+        ));
     }
 
     // Halaman History Log Aktivitas
@@ -209,7 +300,11 @@ class TruckController extends Controller
             $query->where('truck_id', $request->input('truck_id'));
         }
 
-        $logs = $query->paginate(25);
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->input('date'));
+        }
+
+        $logs = $query->paginate(30)->withQueryString();
         $trucks = Truck::orderBy('plate_number')->get();
 
         return view('trucks.logs', compact('logs', 'trucks'));
@@ -232,13 +327,18 @@ class TruckController extends Controller
 
     // ── Private helpers ───────────────────────────────────────
 
-    private function buildStatusCounts(): array
+    private function buildStatusCounts(string $date): array
     {
         $raw = Load::selectRaw('status, count(*) as cnt')
             ->groupBy('status')
             ->pluck('cnt', 'status')
             ->all();
 
-        return array_merge(['muat' => 0, 'otw' => 0, 'bpi' => 0], $raw);
+        return array_merge([
+            'bpi'     => 0,
+            'muat'    => 0,
+            'otw'     => 0,
+            'otw_bpi' => 0,
+        ], $raw);
     }
 }

@@ -49,7 +49,7 @@ class TruckSeeder extends Seeder
             ['plate' => 'B 9834 UEL', 'driver' => 'Miswan',       'phone' => '+62 877-7562-1785','company' => 'Tjp'],
             ['plate' => 'B 9828 UEL', 'driver' => 'Sungari',      'phone' => '+62 821-4630-5411','company' => 'Tjp'],
             ['plate' => 'B 9519 PEI', 'driver' => 'Erpan',        'phone' => '+62 838-3414-5481','company' => 'Tjp'],
-            ['plate' => 'B 9250 UEJ', 'driver' => 'Kiswanto',     'phone' => '+62 878-4092-5447','company' => 'Tjp'],
+            ['plate' => 'B 9124 UEM', 'driver' => 'Satiri',       'phone' => '+62 858-1454-8438','company' => 'Tjp'],
         ];
 
         foreach ($data as $d) {

@@ -42,6 +42,7 @@ body {
 }
 .stat-card .value.clr-blue   { color: var(--accent); }
 .stat-card .value.clr-orange { color: #d97706; }
+.stat-card .value.clr-yellow { color: #ca8a04; }
 .stat-card .value.clr-green  { color: #16a34a; }
 
 /* ── Table Card ──────────────────────────── */
@@ -68,9 +69,10 @@ body {
 }
 
 /* ── Status Badges ───────────────────────── */
-.badge-muat { background-color: var(--accent); color: #fff; }
-.badge-otw  { background-color: #d97706;       color: #fff; }
-.badge-bpi  { background-color: #16a34a;        color: #fff; }
+.badge-muat    { background-color: var(--accent); color: #fff; }
+.badge-otw     { background-color: #d97706;       color: #fff; }
+.badge-otw_bpi { background-color: #ca8a04;       color: #fff; }
+.badge-bpi     { background-color: #16a34a;        color: #fff; }
 
 /* ── Buttons ─────────────────────────────── */
 .btn-brand {

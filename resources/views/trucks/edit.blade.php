@@ -66,7 +66,8 @@
                 @php $currentStatus = old('status', $truck->currentLoad->status ?? 'bpi'); @endphp
                 <option value="muat" {{ $currentStatus == 'muat' ? 'selected' : '' }}>Proses Muat</option>
                 <option value="otw"  {{ $currentStatus == 'otw'  ? 'selected' : '' }}>OTW Pelabuhan</option>
-                <option value="bpi"  {{ $currentStatus == 'bpi'  ? 'selected' : '' }}>BPI (Selesai Bongkar)</option>
+                <option value="otw_bpi" {{ $currentStatus == 'otw_bpi' ? 'selected' : '' }}>OTW BPI</option>
+                <option value="bpi"  {{ $currentStatus == 'bpi'  ? 'selected' : '' }}>BPI</option>
             </select>
             @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>

@@ -57,7 +57,9 @@
                 <select name="status" class="form-select @error('status') is-invalid @enderror" required>
                     <option value="muat"  {{ old('status','muat') == 'muat' ? 'selected' : '' }}>Proses Muat</option>
                     <option value="otw"   {{ old('status') == 'otw' ? 'selected' : '' }}>OTW Pelabuhan</option>
+                    <option value="otw_bpi" {{ old('status') == 'otw_bpi' ? 'selected' : '' }}>OTW BPI</option>
                     <option value="bpi"   {{ old('status') == 'bpi' ? 'selected' : '' }}>BPI</option>
+                    <option value="otw-bpi"   {{ old('status') == 'otw-bpi' ? 'selected' : '' }}>OTW BPI</option>
                 </select>
                 @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
